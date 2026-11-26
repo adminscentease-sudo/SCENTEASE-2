@@ -1,0 +1,41 @@
+(() => {
+'use strict';
+const cfg=window.SCENTEASE_CONFIG||{};
+const client=window.supabase?.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+const $=s=>document.querySelector(s);
+const money=n=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n||0));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let products=[],categories=[],cart=[],user=null,signup=false,toastTimer;
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400)}
+function modal(id,open=true){$('#'+id).classList.toggle('open',open)}
+async function init(){ $('#year').textContent=new Date().getFullYear();if(!client){toast('Supabase configuration is missing');return}
+const {data:{session}}=await client.auth.getSession();user=session?.user||null;updateAccount();
+client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null;updateAccount();if(user)loadCart();});
+await Promise.all([loadCatalog(),loadCart()]);
+$('#accountBtn').onclick=()=>user?accountAction():modal('authModal');
+$('#cartOpen').onclick=()=>{renderCart();modal('cartDrawer')};
+$('#menuToggle').onclick=()=>document.querySelector('.main-nav').classList.toggle('open');
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
+$('#switchAuth').onclick=()=>{signup=!signup;$('#authTitle').textContent=signup?'Create account':'Sign in';$('#authSubmit').textContent=signup?'Create account':'Sign in';$('#nameField').classList.toggle('hidden',!signup);$('#authMessage').textContent=''};
+$('#authForm').onsubmit=authSubmit;$('#searchInput').oninput=renderProducts;$('#categoryFilter').onchange=renderProducts;
+$('#checkoutBtn').onclick=beginCheckout;$('#checkoutForm').onsubmit=placeOrder;
+client.channel('store-products').on('postgres_changes',{event:'*',schema:'public',table:'products'},loadCatalog).subscribe();
+}
+function updateAccount(){ $('#accountBtn').textContent=user?(user.email?.split('@')[0]||'Account'):'Sign in'}
+async function accountAction(){if(confirm('Sign out of SCENTEASE?')){await client.auth.signOut();cart=[];renderCart();toast('Signed out')}}
+async function loadCatalog(){
+const [p,c]=await Promise.all([client.from('products').select('*,brands(name),categories(name)').eq('is_active',true).order('created_at',{ascending:false}),client.from('categories').select('id,name').eq('is_active',true).order('name')]);
+if(p.error){$('#productGrid').innerHTML='<div class="empty-state">The collection is temporarily unavailable. Please refresh in a moment.</div>';return}
+products=p.data||[];categories=c.data||[];const filter=$('#categoryFilter'),current=filter.value;filter.innerHTML='<option value="">All categories</option>'+categories.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');filter.value=current;renderProducts();
+}
+function renderProducts(){const q=$('#searchInput').value.trim().toLowerCase(),cat=$('#categoryFilter').value;const rows=products.filter(p=>(!cat||p.category_id===cat)&&(!q||[p.name,p.description,p.brands?.name,p.categories?.name].join(' ').toLowerCase().includes(q)));$('#productGrid').innerHTML=rows.length?rows.map(p=>`<article class="product-card"><div class="product-image">${p.image_url?`<img loading="lazy" src="${esc(p.image_url)}" alt="${esc(p.name)}">`:'<span class="image-placeholder">SCENTEASE</span>'}</div><div class="product-info"><div class="product-meta"><span>${esc(p.brands?.name||p.categories?.name||'SCENTEASE')}</span><span>${p.stock_quantity>0?'IN STOCK':'SOLD OUT'}</span></div><h3>${esc(p.name)}</h3><div class="product-bottom"><span class="product-price">${money(p.price)}</span><button class="add-btn" data-add="${p.id}" ${p.stock_quantity<1?'disabled':''}>${p.stock_quantity>0?'Add to bag +':'Unavailable'}</button></div></div></article>`).join(''):'<div class="empty-state">No fragrances match your search yet.</div>';document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addToCart(b.dataset.add))}
+async function loadCart(){if(!user){cart=[];renderCart();return}const {data,error}=await client.from('cart_items').select('id,quantity,product:products(id,name,price,image_url,stock_quantity,is_active)').eq('user_id',user.id);if(error){console.error(error);return}cart=(data||[]).filter(x=>x.product).map(x=>({id:x.id,product:x.product,quantity:x.quantity}));renderCart()}
+async function addToCart(id){if(!user){modal('authModal');toast('Sign in to save your bag');return}const p=products.find(x=>x.id===id);if(!p||p.stock_quantity<1)return;const old=cart.find(x=>x.product.id===id);const next=(old?.quantity||0)+1;if(next>p.stock_quantity){toast('You have reached available stock');return}const result=await client.from('cart_items').upsert({user_id:user.id,product_id:id,quantity:next},{onConflict:'user_id,product_id'});if(result.error){toast(result.error.message);return}await loadCart();toast('Added to your bag')}
+function renderCart(){const count=cart.reduce((n,x)=>n+x.quantity,0),sum=cart.reduce((n,x)=>n+Number(x.product.price)*x.quantity,0);$('#cartCount').textContent=count;$('#cartSubtotal').textContent=money(sum);$('#cartLines').innerHTML=cart.length?cart.map(x=>`<div class="cart-line"><div class="cart-thumb">${x.product.image_url?`<img class="cart-thumb" src="${esc(x.product.image_url)}" alt="">`:''}</div><div><h4>${esc(x.product.name)}</h4><small>${money(x.product.price)}</small><div class="qty-controls"><button data-qty="${x.id}" data-step="-1">−</button><span>${x.quantity}</span><button data-qty="${x.id}" data-step="1">+</button></div></div><button class="link-btn" data-remove="${x.id}">Remove</button></div>`).join(''):'<div class="empty-state">Your bag is waiting for its first scent.</div>';document.querySelectorAll('[data-qty]').forEach(b=>b.onclick=()=>changeQty(b.dataset.qty,Number(b.dataset.step)));document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removeCart(b.dataset.remove));$('#checkoutBtn').disabled=!cart.length}
+async function changeQty(id,step){const x=cart.find(a=>a.id===id);if(!x)return;const n=x.quantity+step;if(n<1)return removeCart(id);if(n>x.product.stock_quantity){toast('Not enough stock');return}const {error}=await client.from('cart_items').update({quantity:n}).eq('id',id);if(error)toast(error.message);else await loadCart()}
+async function removeCart(id){const {error}=await client.from('cart_items').delete().eq('id',id);if(error)toast(error.message);else await loadCart()}
+async function authSubmit(e){e.preventDefault();const f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password');$('#authMessage').textContent='Please wait…';let result;if(signup)result=await client.auth.signUp({email,password,options:{data:{full_name:f.get('full_name')||''}}});else result=await client.auth.signInWithPassword({email,password});if(result.error){$('#authMessage').textContent=result.error.message;return}if(signup&&!result.data.session){$('#authMessage').textContent='Check your email to confirm your account, then sign in.';return}user=result.data.user;modal('authModal',false);updateAccount();await loadCart();toast(signup?'Account created':'Welcome back')}
+function beginCheckout(){if(!user){modal('cartDrawer',false);modal('authModal');return}if(!cart.length)return;$('#checkoutSummary').innerHTML=`<span>${cart.reduce((n,x)=>n+x.quantity,0)} item(s) · Cash on Delivery</span><strong>${money(cart.reduce((n,x)=>n+x.product.price*x.quantity,0))}</strong>`;modal('cartDrawer',false);modal('checkoutModal')}
+async function placeOrder(e){e.preventDefault();const f=new FormData(e.currentTarget);const btn=e.submitter;btn.disabled=true;$('#checkoutMessage').textContent='Placing your order securely…';const {data,error}=await client.rpc('checkout_cod',{p_phone:f.get('phone'),p_shipping_address:f.get('address'),p_notes:f.get('notes')||''});btn.disabled=false;if(error){$('#checkoutMessage').textContent=error.message;return}$('#checkoutMessage').textContent='Order placed successfully. Reference: '+data;cart=[];renderCart();modal('checkoutModal',false);toast('Order received — thank you!');e.currentTarget.reset();await loadCatalog()}
+init();
+})();
