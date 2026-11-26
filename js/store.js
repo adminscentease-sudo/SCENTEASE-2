@@ -3,14 +3,14 @@
 const cfg=window.SCENTEASE_CONFIG||{},client=window.supabase?.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY),$=s=>document.querySelector(s);
 const money=n=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n||0));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let products=[],categories=[],brands=[],cart=[],user=null,signup=false,timer;
+let products=[],categories=[],brands=[],cart=[],user=null,signup=false,timer,customerOrderChannel=null;
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>e.classList.remove('show'),2500)}
 function modal(id,show=true){$('#'+id)?.classList.toggle('open',show)}
 function total(){return cart.reduce((n,x)=>n+Number(x.product.price)*x.quantity,0)}
 async function init(){
  $('#year').textContent=new Date().getFullYear();if(!client){toast('Supabase configuration is missing');return}
- const {data:{session}}=await client.auth.getSession();user=session?.user||null;updateAccount();
- client.auth.onAuthStateChange((_e,s)=>{user=s?.user||null;updateAccount();if(user)loadCart();else{cart=[];renderCart()}});
+ const {data:{session}}=await client.auth.getSession();user=session?.user||null;updateAccount();subscribeCustomerOrderUpdates();
+ client.auth.onAuthStateChange((_e,s)=>{user=s?.user||null;updateAccount();subscribeCustomerOrderUpdates();if(user)loadCart();else{cart=[];renderCart()}});
  await Promise.all([loadCatalog(),loadCart()]);
  $('#accountBtn').onclick=()=>user?openAccount():modal('authModal');
  $('#cartOpen').onclick=()=>{renderCart();modal('cartDrawer')};
@@ -23,6 +23,7 @@ async function init(){
  client.channel('store-live').on('postgres_changes',{event:'*',schema:'public',table:'products'},loadCatalog).on('postgres_changes',{event:'*',schema:'public',table:'categories'},loadCatalog).on('postgres_changes',{event:'*',schema:'public',table:'brands'},loadCatalog).subscribe();
 }
 function updateAccount(){$('#accountBtn').textContent=user?(user.email?.split('@')[0]||'Account'):'Sign in'}
+function subscribeCustomerOrderUpdates(){if(customerOrderChannel){client.removeChannel(customerOrderChannel);customerOrderChannel=null}if(!user)return;customerOrderChannel=client.channel('customer-orders-'+user.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'orders',filter:'customer_id=eq.'+user.id},payload=>{const updated=payload.new||{};if($('#accountModal')?.classList.contains('open'))openAccount();if(updated.order_number&&updated.status)toast('Order '+updated.order_number+' is now '+updated.status) }).subscribe()}
 async function signOut(){await client.auth.signOut();cart=[];renderCart();modal('accountModal',false);toast('Signed out')}
 async function openAccount(){const {data:p}=await client.from('profiles').select('*').eq('id',user.id).maybeSingle();$('#profileForm [name=full_name]').value=p?.full_name||'';$('#profileForm [name=phone]').value=p?.phone||'';const {data:o,error}=await client.from('orders').select('id,order_number,status,total,created_at,order_items(product_name,quantity,unit_price,line_total)').eq('customer_id',user.id).order('created_at',{ascending:false});$('#orderHistory').innerHTML=error?'<p class="muted">Could not load orders.</p>':(o||[]).map(x=>'<div class="cart-line"><div><b>'+esc(x.order_number)+'</b><small>'+new Date(x.created_at).toLocaleDateString()+' · '+esc(x.status)+'</small>'+(x.order_items||[]).map(i=>'<small style="display:block">'+esc(i.product_name)+' × '+i.quantity+'</small>').join('')+'</div><strong>'+money(x.total)+'</strong></div>').join('')||'<p class="muted">You have not placed an order yet.</p>';modal('accountModal')}
 async function saveProfile(e){e.preventDefault();const f=new FormData(e.currentTarget);const {error}=await client.from('profiles').update({full_name:f.get('full_name'),phone:f.get('phone')||''}).eq('id',user.id);$('#profileMessage').textContent=error?error.message:'Profile saved.'}
