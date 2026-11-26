@@ -56,3 +56,5 @@ create policy "admin delete product images" on storage.objects for delete to aut
 do $$ begin alter publication supabase_realtime add table public.products;exception when duplicate_object then null;when undefined_object then null;end $$;
 do $$ begin alter publication supabase_realtime add table public.orders;exception when duplicate_object then null;when undefined_object then null;end $$;
 do $$ begin alter publication supabase_realtime add table public.cart_items;exception when duplicate_object then null;when undefined_object then null;end $$;
+-- Trigger functions are invoked by their trigger; do not expose them as Data API RPC endpoints.
+revoke all on function public.handle_new_user() from public, anon, authenticated;
