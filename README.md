@@ -9,7 +9,7 @@ A static HTML/CSS/vanilla JavaScript storefront and admin console backed by Supa
 - Region: Singapore (ap-southeast-1)
 - URL: https://gtaegfhznebmykivcqyo.supabase.co
 - Frontend key: publishable key in config.js (safe to expose when RLS is enabled)
-- Database: initialized; application tables start empty.
+- Database: initialized with three SCENTEASE Atelier starter fragrances. Customer accounts, carts, orders and sales records start empty.
 
 Never put a Supabase service_role or secret key in frontend files, GitHub, or GitHub Pages.
 
@@ -22,7 +22,7 @@ Open index.html through a static local server (for example VS Code Live Server).
 1. In Supabase Dashboard → Authentication → Users, create/register the owner account.
 2. Open that user's record and set trusted app_metadata to {"role":"admin"}. Do not use user_metadata; customers can edit that.
 3. Sign in at admin.html. If already signed in before the role change, sign out and sign back in.
-4. Add categories, brands, and products. No sample catalogue data is inserted.
+4. The starter catalogue is already loaded: Noir Reserve, Citrus Drift and Amber Veil. Add, edit, hide, publish or delete products from the Products tab.
 
 ## GitHub Pages deployment
 
@@ -34,11 +34,11 @@ GitHub Pages is static hosting. Supabase provides the backend. The browser key i
 
 ## Included functionality
 
-- Responsive luxury-inspired storefront, live catalogue, search and category filter
-- Supabase Auth customer registration and login
-- Persistent database-backed cart
+- Responsive luxury-inspired storefront (existing visual design retained), live catalogue, product details, search, category and brand filters
+- Supabase Auth customer registration, login, logout, profile updates and password changes; customer order history
+- Persistent database-backed cart with quantity, stock and subtotal validation
 - Cash-on-delivery checkout via a single database transaction with stock validation/deduction
-- Admin dashboard, product/category/brand CRUD, image uploads, order status management, customer listing and sales CSV/print reports
+- Admin dashboard, product/category/brand management, product image uploads, confirmation-protected product deletion, order status management, customer listing and sales CSV/print reports
 - Realtime product/order updates
 - RLS on application tables; trusted app_metadata.role=admin checks
 - Cancellation restores stock once; delivered orders create a unique sales record
