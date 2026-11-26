@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#11110f"><meta name="description" content="SCENTEASE — Discover your signature scent.">
+  <title>SCENTEASE — Cologne, Curated</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.3"></script>
+  <script src="config.js"></script>
+  <script defer src="js/store.js"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="brandmark" href="index.html">SCENT<span>EASE</span><small>THE COLOGNE EDIT</small></a>
+  <nav class="main-nav"><a href="#collection">Collection</a><a href="#story">Our philosophy</a><a href="admin.html">Admin</a></nav>
+  <div class="header-actions"><button class="text-btn" id="accountBtn">Sign in</button><button class="cart-trigger" id="cartOpen">Bag <span id="cartCount">0</span></button><button class="menu-toggle" id="menuToggle" aria-label="Open menu">☰</button></div>
+</header>
+<main>
+  <section class="hero">
+    <div class="hero-copy"><p class="eyebrow">SCENT IS A SIGNATURE</p><h1>Leave a little<br><em>mystery</em> behind.</h1><p class="hero-sub">A considered collection of fragrances for every version of you.</p><a class="button button-light" href="#collection">Explore the collection <span>↗</span></a></div>
+    <div class="hero-art"><div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div><div class="hero-bottle"><div class="bottle-cap"></div><div class="bottle-neck"></div><div class="bottle-glass"><span>SCENT<br>EASE</span><small>EAU DE PARFUM</small></div></div><p class="art-caption">FIND YOUR<br>OWN NOTE.</p></div>
+    <div class="hero-foot"><span>01 / DISCOVER</span><span>CRAFTED FOR THE EVERYDAY EXTRAORDINARY</span><span>SCROLL TO EXPLORE ↓</span></div>
+  </section>
+  <section class="intro section-wrap" id="story"><p class="eyebrow">THE ART OF SCENT</p><h2>Not just a fragrance.<br><em>A feeling, bottled.</em></h2><p>Find the notes that feel like you. Explore the collection, build your bag, and let your next signature scent find its way home.</p></section>
+  <section class="collection section-wrap" id="collection">
+    <div class="section-heading"><div><p class="eyebrow">THE SCENTEASE EDIT</p><h2>Shop the <em>collection</em></h2></div><div class="catalog-tools"><input id="searchInput" type="search" placeholder="Search fragrances…" aria-label="Search fragrances"><select id="categoryFilter" aria-label="Filter by category"><option value="">All categories</option></select></div></div>
+    <div id="productGrid" class="product-grid"><div class="empty-state">Loading the collection…</div></div>
+  </section>
+  <section class="closing-banner"><p class="eyebrow">YOUR NEXT CHAPTER, IN A BOTTLE</p><h2>Make it <em>memorable.</em></h2><a class="button button-outline" href="#collection">Find your fragrance ↗</a></section>
+</main>
+<footer class="site-footer"><a class="brandmark" href="#">SCENT<span>EASE</span><small>THE COLOGNE EDIT</small></a><p>Thoughtfully chosen. Distinctly yours.</p><span>© <span id="year"></span> SCENTEASE</span></footer>
+<div class="overlay" id="authModal"><section class="modal"><button class="modal-close" data-close="authModal">×</button><p class="eyebrow">WELCOME TO SCENTEASE</p><h2 id="authTitle">Sign in</h2><form id="authForm"><label id="nameField" class="hidden">Full name<input name="full_name" autocomplete="name"></label><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label><button class="button button-dark full" id="authSubmit">Sign in</button></form><p class="modal-switch" id="authSwitch">New here? <button class="link-btn" id="switchAuth">Create an account</button></p><p class="form-message" id="authMessage" role="status"></p></section></div>
+<div class="overlay" id="cartDrawer"><section class="drawer"><div class="drawer-head"><div><p class="eyebrow">YOUR SELECTION</p><h2>Your bag</h2></div><button class="modal-close" data-close="cartDrawer">×</button></div><div id="cartLines" class="cart-lines"></div><div class="cart-bottom"><div class="cart-total"><span>Subtotal</span><strong id="cartSubtotal">₱0.00</strong></div><p class="muted">Shipping is confirmed at checkout. Payment method: Cash on Delivery.</p><button class="button button-dark full" id="checkoutBtn">Proceed to checkout</button></div></section></div>
+<div class="overlay" id="checkoutModal"><section class="modal"><button class="modal-close" data-close="checkoutModal">×</button><p class="eyebrow">ALMOST YOURS</p><h2>Delivery details</h2><form id="checkoutForm"><label>Contact number<input name="phone" required autocomplete="tel"></label><label>Complete delivery address<textarea name="address" rows="3" required autocomplete="street-address"></textarea></label><label>Order notes (optional)<textarea name="notes" rows="2"></textarea></label><div class="checkout-summary" id="checkoutSummary"></div><button class="button button-dark full">Place COD order</button></form><p class="form-message" id="checkoutMessage" role="status"></p></section></div>
+<div class="toast" id="toast" role="status"></div>
+</body></html>
